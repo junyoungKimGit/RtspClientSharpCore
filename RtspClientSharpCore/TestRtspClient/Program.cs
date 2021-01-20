@@ -14,6 +14,7 @@ using RtspClientSharpCore.Rtsp;
 using FrameDecoderCore.FFmpeg;
 using RtspClientSharpCore.RawFrames;
 using PixelFormat = FrameDecoderCore.PixelFormat;
+using System.Data.SQLite;
 
 namespace TestRtspClient
 {
@@ -116,6 +117,44 @@ namespace TestRtspClient
             if (decodedFrame != null) 
             {
                 var _FrameType = rawFrame is RawH264IFrame ? "IFrame" : "PFrame";
+
+                //myCode
+                DateTime currentTime = DateTime.Now;
+
+                Console.WriteLine($"{currentTime} ::Frame is {_FrameType }...");
+
+                string strConn = @"Data Source=E:\work\db\ipframes.db";
+
+                try
+                {
+                    SQLiteConnection conn = new SQLiteConnection(strConn);
+
+                    conn.Open();
+
+                    if (_FrameType == "IFrame")
+                    {
+                        string sql = "INSERT Into Frames VALUES( 1, 0, datetime('now', 'localtime'))";
+                        SQLiteCommand cmd = new SQLiteCommand(sql, conn);
+                        cmd.ExecuteNonQuery();
+                    }
+                    else
+                    {
+                        string sql = "INSERT Into Frames VALUES( 0, 1, datetime('now', 'localtime'))";
+                        SQLiteCommand cmd = new SQLiteCommand(sql, conn);
+                        cmd.ExecuteNonQuery();
+                    }
+
+                    conn.Close();
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine($"Error saving to file: {e.Message}");
+                    Debug.WriteLine($"Error saving to file: {e.Message}");
+                    Debug.WriteLine($"Stack trace: {e.StackTrace}");
+                }
+
+                //original
+                /*
                 TransformParameters _transformParameters = new TransformParameters(RectangleF.Empty,
                     new Size(STREAM_WIDTH, STREAM_HEIGHT),
                     ScalingPolicy.Stretch, PixelFormat.Bgra32, ScalingQuality.FastBilinear);
@@ -151,6 +190,7 @@ namespace TestRtspClient
                     Debug.WriteLine($"Error saving to file: {e.Message}");
                     Debug.WriteLine($"Stack trace: {e.StackTrace}");
                 }
+                */
             }
            
         }
@@ -195,8 +235,17 @@ namespace TestRtspClient
 
             throw new ArgumentOutOfRangeException(nameof(videoFrame));
         }
+        private static void ConnectDB()
+        {
+            string strConn = @"Data Source=E:\work\db\ipframes.db";
 
+            SQLiteConnection conn = new SQLiteConnection(strConn);
 
-       
+            conn.Open();
+            string sql = "INSERT Into Frames VALUES( 0, 0, datetime('now'))";
+            SQLiteCommand cmd = new SQLiteCommand(sql, conn);
+            cmd.ExecuteNonQuery();
+
+        }
     }
 }
