@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "TestRtspClient": {
+      "commandName": "Project"
+    },
+    "Docker": {
+      "commandName": "Docker"
+    }
+  }
+}

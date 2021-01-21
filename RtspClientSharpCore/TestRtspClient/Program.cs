@@ -15,6 +15,7 @@ using FrameDecoderCore.FFmpeg;
 using RtspClientSharpCore.RawFrames;
 using PixelFormat = FrameDecoderCore.PixelFormat;
 using System.Data.SQLite;
+using System.IO;
 
 namespace TestRtspClient
 {
@@ -28,16 +29,64 @@ namespace TestRtspClient
         //public static event EventHandler<IDecodedVideoFrame> FrameReceived;
         private static bool isWindows;
         private static bool isLinux;
+
+        private static string DBPath = Environment.CurrentDirectory + @"\IPFramesDB.db";
         static void Main(string[] args)
         {
             isWindows = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
             isLinux = RuntimeInformation.IsOSPlatform(OSPlatform.Linux);
-            
 
             Console.WriteLine($"Platform {RuntimeInformation.OSDescription} {RuntimeInformation.OSArchitecture}");
+
+            if( isLinux )
+            {
+                DBPath = Environment.CurrentDirectory + @"/IPFramesDB.db";
+            }
+
+            //createDB
+            Console.WriteLine("creating DB... at :" + DBPath);
+            CreateDB();
+
+            //부하주는 Task
+            //comment for docket 
+            int loadWeight = 3;
+            /*
+
+            Console.WriteLine("input load task count : ");
+
+            while( true )
+            {
+                loadWeight = int.Parse(Console.ReadLine());
+
+                if ( loadWeight > 20)
+                {
+                    Console.WriteLine("Too high number, try again ( samller than 20) :");
+                }
+                else
+                {
+                    break;
+                }
+            }
+            */
+            for(int i = 0; i < loadWeight; i++ )
+            { 
+                Task.Factory.StartNew(() =>
+                {
+                    Thread.Sleep(1000 * 5); //5 second
+                    float temp = 7;
+                    while(true)
+                    {
+                        temp = (temp * (temp + (float)1.414)) / temp;
+                    }
+                });
+            }
+
             var serverUri = new Uri("rtsp://wowzaec2demo.streamlock.net/vod/mp4:BigBuckBunny_115k.mov");
+            Console.WriteLine("rtsp source : rtsp://wowzaec2demo.streamlock.net/vod/mp4:BigBuckBunny_115k.mov");
             //var credentials = new NetworkCredential("admin", "admin12345678");
 
+
+            //rtsp connection
             var connectionParameters = new ConnectionParameters(serverUri/*, credentials*/);
             var cancellationTokenSource = new CancellationTokenSource();
 
@@ -123,7 +172,8 @@ namespace TestRtspClient
 
                 Console.WriteLine($"{currentTime} ::Frame is {_FrameType }...");
 
-                string strConn = @"Data Source=E:\work\db\ipframes.db";
+                //string strConn = @"Data Source=E:\work\db\ipframes.db";
+                string strConn = @"Data Source = " + DBPath;
 
                 try
                 {
@@ -235,17 +285,31 @@ namespace TestRtspClient
 
             throw new ArgumentOutOfRangeException(nameof(videoFrame));
         }
-        private static void ConnectDB()
+        private static void CreateDB()
         {
-            string strConn = @"Data Source=E:\work\db\ipframes.db";
+            //파일이 없으면 만들기
+            FileInfo fileInfo = new FileInfo(DBPath);
 
-            SQLiteConnection conn = new SQLiteConnection(strConn);
+            if ( fileInfo.Exists == false)
+            {
+                SQLiteConnection.CreateFile(DBPath);
 
-            conn.Open();
-            string sql = "INSERT Into Frames VALUES( 0, 0, datetime('now'))";
-            SQLiteCommand cmd = new SQLiteCommand(sql, conn);
-            cmd.ExecuteNonQuery();
+                string connString = @"Data Source = " + DBPath + ";";
 
+                // DB 파일에 테이블을 생성하는 코드
+                using (SQLiteConnection conn = new SQLiteConnection(connString))
+                {
+                    conn.Open();
+                    // 테이블 및 필드생성
+                    string sql = "create table Frames (i int, p int, TimeStamp TEXT)";
+
+                    SQLiteCommand command = new SQLiteCommand(sql, conn);
+                    int result = command.ExecuteNonQuery();
+
+                    command.Dispose();
+                    conn.Close();
+                }
+            }
         }
     }
 }
