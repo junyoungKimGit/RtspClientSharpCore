@@ -16,6 +16,9 @@ using RtspClientSharpCore.RawFrames;
 using PixelFormat = FrameDecoderCore.PixelFormat;
 using System.Data.SQLite;
 using System.IO;
+using System.Net.Sockets;
+using System.Net;
+using System.Text;
 
 namespace TestRtspClient
 {
@@ -30,7 +33,7 @@ namespace TestRtspClient
         private static bool isWindows;
         private static bool isLinux;
 
-        private static string DBPath = Environment.CurrentDirectory + @"\IPFramesDB.db";
+        private static string DBPath;
         static void Main(string[] args)
         {
             isWindows = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
@@ -40,51 +43,34 @@ namespace TestRtspClient
 
             if( isLinux )
             {
-                DBPath = Environment.CurrentDirectory + @"/IPFramesDB.db";
+                DBPath = Environment.CurrentDirectory + @"/IPFramesDB.db";                
+            }
+            else
+            {
+                DBPath = Environment.CurrentDirectory + @"\IPFramesDB.db";
             }
 
             //createDB
-            Console.WriteLine("creating DB... at :" + DBPath);
+            Console.WriteLine("creating DB... at :" + DBPath );
             CreateDB();
 
-            //부하주는 Task
-            //comment for docket 
-            int loadWeight = 3;
-            /*
+            //부하주는 Task들
+            Console.WriteLine("Load CPU...");
+            ImplicitLoadCPU();
 
-            Console.WriteLine("input load task count : ");
+            //monitor용 network server 동작
+            Console.WriteLine("Start server for monitoring...");
+            AysncQueryServer();
 
-            while( true )
-            {
-                loadWeight = int.Parse(Console.ReadLine());
-
-                if ( loadWeight > 20)
-                {
-                    Console.WriteLine("Too high number, try again ( samller than 20) :");
-                }
-                else
-                {
-                    break;
-                }
-            }
-            */
-            for(int i = 0; i < loadWeight; i++ )
-            { 
-                Task.Factory.StartNew(() =>
-                {
-                    Thread.Sleep(1000 * 5); //5 second
-                    float temp = 7;
-                    while(true)
-                    {
-                        temp = (temp * (temp + (float)1.414)) / temp;
-                    }
-                });
-            }
-
-            var serverUri = new Uri("rtsp://wowzaec2demo.streamlock.net/vod/mp4:BigBuckBunny_115k.mov");
-            Console.WriteLine("rtsp source : rtsp://wowzaec2demo.streamlock.net/vod/mp4:BigBuckBunny_115k.mov");
+            Console.WriteLine("Start server for rtsp streaming...");
+            string uri = "rtsp://wowzaec2demo.streamlock.net/vod/mp4:BigBuckBunny_115k.mov";
+            //string uri = "rtsp://127.0.0.1:8554/test";
+            //string uri = "rtsp://123.30.182.75:554/vod/mp4:bird.mp4";
+            //var serverUri = new Uri("rtsp://localhost:8554/test/BillGates_2020-480p-ko.mp4");
+            //var serverUri = new Uri(uri);
+            var serverUri = new Uri(uri);
+            Console.WriteLine(uri);
             //var credentials = new NetworkCredential("admin", "admin12345678");
-
 
             //rtsp connection
             var connectionParameters = new ConnectionParameters(serverUri/*, credentials*/);
@@ -101,7 +87,144 @@ namespace TestRtspClient
             connectTask.Wait(CancellationToken.None);
         }
 
+        static void ImplicitLoadCPU()
+        {
+            int loadWeight = 0;
+            /*
+             while( true )
+            {
+                loadWeight = int.Parse(Console.ReadLine());
 
+                if ( loadWeight > 20)
+                {
+                    Console.WriteLine("Too high number, try again ( samller than 20) :");
+                }
+                else
+                {
+                    break;
+                }
+            }
+            */
+
+            for (int i = 0; i < loadWeight; i++)
+            {
+                Task.Factory.StartNew(() =>
+                {
+                    Thread.Sleep(1000 * 5); //5 second
+                    float temp = 7;
+                    ulong count = 0;
+                    while (true)
+                    {
+                        temp = (temp * (temp + (float)1.414)) / temp;
+                        count++;
+
+                        if (count == 100000000 * 10)
+                        {
+                            Thread.Sleep(1000 * 10); //10 second
+                            count = 0;
+                        }
+                    }
+                });
+            }
+        }
+        async static Task AysncQueryServer()
+        {
+            TcpListener listener = new TcpListener(IPAddress.Any, 7000);
+            listener.Start();
+            while (true)
+            {
+                // 비동기 Accept                
+                TcpClient tc = await listener.AcceptTcpClientAsync().ConfigureAwait(false);
+
+                // 새 쓰레드에서 처리
+                Task.Factory.StartNew(AsyncTcpProcess, tc);
+            }
+        }
+        async static void AsyncTcpProcess(object o)
+        {
+            TcpClient tc = (TcpClient)o;
+
+            int MAX_SIZE = 1024;  // 가정
+            NetworkStream stream = tc.GetStream();
+            /*
+
+            string msg = "Hello World";
+            byte[] buff = Encoding.ASCII.GetBytes(msg);
+
+            // (3) 스트림에 바이트 데이타 전송
+            stream.Write(buff, 0, buff.Length);
+            Console.WriteLine("Send Hellow world");
+            */
+
+            string queryResult = "";
+
+            // 비동기 수신            
+            var buff = new byte[MAX_SIZE];
+            var nbytes = await stream.ReadAsync(buff, 0, buff.Length).ConfigureAwait(false);
+            if (nbytes > 0)
+            {
+                string msg = Encoding.ASCII.GetString(buff, 0, nbytes);
+                Console.WriteLine($"{msg} at {DateTime.Now}");
+
+                queryResult = queryDB(msg);
+                buff = Encoding.ASCII.GetBytes(queryResult);
+                Console.WriteLine(queryResult);
+
+                // 비동기 송신
+                await stream.WriteAsync(buff, 0, buff.Length).ConfigureAwait(false);
+            }
+
+
+            stream.Close();
+            tc.Close();
+        }
+
+        static string queryDB(string queryString)
+        {
+            //string strConn = @"Data Source=E:\work\db\ipframes.db";
+            //string DBPath = @"E:\work\RtspClientSharpCore\RtspClientSharpCore\TestRtspClient\bin\x64\Debug\netcoreapp3.0\IPFramesDB.db";
+            string strConn = @"Data Source = " + DBPath;
+
+            string queryResult = "Failed to query";
+
+            try
+            {
+                using (SQLiteConnection conn = new SQLiteConnection(strConn))
+                {
+
+                    conn.Open();
+
+                    using (SQLiteCommand cmd = new SQLiteCommand(queryString, conn))
+                    {
+                        using (SQLiteDataReader reader = cmd.ExecuteReader())
+                        { 
+
+                            DateTime currentTime = DateTime.Now;
+
+                            if (reader.Read())
+                            {
+                                queryResult = currentTime + " :: i frames=" + reader["sum(i)"] + ", p frames=" + reader["sum(p)"];
+                            }
+                            else
+                            {
+                                queryResult = "Failed to read DB. Qeury String is :" + queryString;
+                            }
+                        }
+                    }
+
+                    conn.Close();
+                }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine($"Error saving to file: {e.Message}");
+                Debug.WriteLine($"Error saving to file: {e.Message}");
+                Debug.WriteLine($"Stack trace: {e.StackTrace}");
+            }
+            
+
+            return queryResult;
+        }
         private static async Task ConnectAsync(ConnectionParameters connectionParameters, CancellationToken token)
         {
             try
@@ -177,24 +300,29 @@ namespace TestRtspClient
 
                 try
                 {
-                    SQLiteConnection conn = new SQLiteConnection(strConn);
+                    using (SQLiteConnection conn = new SQLiteConnection(strConn))
+                    { 
+                        conn.Open();
 
-                    conn.Open();
+                        if (_FrameType == "IFrame")
+                        {
+                            string sql = "INSERT Into Frames VALUES( 1, 0, datetime('now', 'localtime'))";
+                            using (SQLiteCommand cmd = new SQLiteCommand(sql, conn))
+                            {
+                                cmd.ExecuteNonQuery();
+                            }
+                        }
+                        else
+                        {
+                            string sql = "INSERT Into Frames VALUES( 0, 1, datetime('now', 'localtime'))";
+                            using (SQLiteCommand cmd = new SQLiteCommand(sql, conn))
+                            {
+                                cmd.ExecuteNonQuery();
+                            }
+                        }
 
-                    if (_FrameType == "IFrame")
-                    {
-                        string sql = "INSERT Into Frames VALUES( 1, 0, datetime('now', 'localtime'))";
-                        SQLiteCommand cmd = new SQLiteCommand(sql, conn);
-                        cmd.ExecuteNonQuery();
+                        conn.Close();
                     }
-                    else
-                    {
-                        string sql = "INSERT Into Frames VALUES( 0, 1, datetime('now', 'localtime'))";
-                        SQLiteCommand cmd = new SQLiteCommand(sql, conn);
-                        cmd.ExecuteNonQuery();
-                    }
-
-                    conn.Close();
                 }
                 catch (Exception e)
                 {

@@ -43,7 +43,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\FrameDecoderCore\FrameDecoderCore.csproj" />
-    <ProjectReference Include="..\RtspClientSharpCore\RtspClientSharpCore.csproj" />
   </ItemGroup>
 
   <ItemGroup>

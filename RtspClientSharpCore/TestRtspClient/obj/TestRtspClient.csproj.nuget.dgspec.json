@@ -176,9 +176,6 @@
             "projectReferences": {
               "E:\\work\\RtspClientSharpCore\\RtspClientSharpCore\\FrameDecoderCore\\FrameDecoderCore.csproj": {
                 "projectPath": "E:\\work\\RtspClientSharpCore\\RtspClientSharpCore\\FrameDecoderCore\\FrameDecoderCore.csproj"
-              },
-              "E:\\work\\RtspClientSharpCore\\RtspClientSharpCore\\RtspClientSharpCore\\RtspClientSharpCore.csproj": {
-                "projectPath": "E:\\work\\RtspClientSharpCore\\RtspClientSharpCore\\RtspClientSharpCore\\RtspClientSharpCore.csproj"
               }
             }
           }
