@@ -1,0 +1,19 @@
+apiVersion : apps/v1
+kind: Deployment
+metadata:
+  name: "akss1test-0071"
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: "akss1test-0071"
+  template:
+    metadata:
+      labels:
+        app: "akss1test-0071"
+    spec:
+      containers:
+        - name: "akss1test-0071"
+          image: "rtspclientsample.azurecr.io/akss1test"
+          ports:
+          - containerPort: 80

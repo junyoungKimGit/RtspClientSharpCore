@@ -1,0 +1,64 @@
+on: [push]
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+    
+    - uses: actions/checkout@master
+    
+    - uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: Create ACR
+      id: create-acr
+      run: |
+        az acr create -n rtspClientSample -g rtspClientSamplebb70-rg --location "Korea Central" --sku Standard --admin-enabled
+        echo "::set-output name=acr_username::`az acr credential show -n rtspClientSample --query username | xargs`"
+        echo "::set-output name=acr_password::`az acr credential show -n rtspClientSample --query passwords[0].value | xargs`"
+        echo "::add-mask::`az acr credential show -n rtspClientSample --query passwords[0].value | xargs`"
+
+    - uses: azure/docker-login@v1
+      with:
+        login-server: rtspclientsample.azurecr.io
+        username: ${{ steps.create-acr.outputs.acr_username }}
+        password: ${{ steps.create-acr.outputs.acr_password }}
+
+    - name: Build and push image to ACR
+      id: build-image
+      run: |
+        docker build "$GITHUB_WORKSPACE/--force-rm -t testrtspclient:dev --target base  --label "com.microsoft.created-by=visual-studio" --label "com.microsoft.visual-studio.project-name=TestRtspClient"" -f  "RtspClientSharpCore/RtspClientSharpCore/TestRtspClient/Dockerfile docker" -t rtspclientsample.azurecr.io/akss1test:${{ github.sha }}
+        docker push rtspclientsample.azurecr.io/akss1test:${{ github.sha }}
+    
+    - uses: azure/k8s-set-context@v1
+      id: login
+      with:
+         kubeconfig: ${{ secrets.aks_akss1test_kubeConfig }}
+    
+    - name: Create namespace
+      run: |
+        namespacePresent=`kubectl get namespace | grep aks-s1-test | wc -l`
+        if [ $namespacePresent -eq 0 ]
+        then
+            echo `kubectl create namespace aks-s1-test`
+        fi
+
+    - uses: azure/k8s-create-secret@v1
+      with:
+        namespace: aks-s1-test
+        container-registry-url: rtspclientsample.azurecr.io
+        container-registry-username: ${{ steps.create-acr.outputs.acr_username }}
+        container-registry-password: ${{ steps.create-acr.outputs.acr_password }}
+        secret-name: akss1testdockerauth
+       
+    - uses: azure/k8s-deploy@v1.2
+      with:
+        namespace: aks-s1-test
+        manifests: |
+          manifests/deployment.yml
+          manifests/service.yml
+          manifests/ingress.yml
+        images: |
+          rtspclientsample.azurecr.io/akss1test:${{ github.sha }}
+        imagepullsecrets: |
+          akss1testdockerauth
