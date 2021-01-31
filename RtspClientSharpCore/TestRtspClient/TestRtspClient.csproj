@@ -75,8 +75,4 @@
     </None>
   </ItemGroup>
 
-  <Target Name="PostBuild" AfterTargets="PostBuildEvent">
-    <Exec Command="xcopy $(ProjectDir)\lib\x64\*.dll  $(TargetDir)  /Y /E /C /F&#xA;&#xD;&#xA;xcopy $(ProjectDir)\lib\x64\*.so  $(TargetDir)  /Y /E /C /F" />
-  </Target>
-
 </Project>

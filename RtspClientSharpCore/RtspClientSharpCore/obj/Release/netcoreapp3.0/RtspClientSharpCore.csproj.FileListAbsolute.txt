@@ -5,3 +5,11 @@ I:\TestProjects\RtspClientSharpCore\RtspClientSharpCore\obj\Release\netcoreapp3.
 I:\TestProjects\RtspClientSharpCore\RtspClientSharpCore\obj\Release\netcoreapp3.0\RtspClientSharpCore.AssemblyInfo.cs
 I:\TestProjects\RtspClientSharpCore\RtspClientSharpCore\obj\Release\netcoreapp3.0\RtspClientSharpCore.dll
 I:\TestProjects\RtspClientSharpCore\RtspClientSharpCore\obj\Release\netcoreapp3.0\RtspClientSharpCore.pdb
+E:\work\RtspClientSharpCore\RtspClientSharpCore\RtspClientSharpCore\bin\Release\netcoreapp3.0\RtspClientSharpCore.deps.json
+E:\work\RtspClientSharpCore\RtspClientSharpCore\RtspClientSharpCore\bin\Release\netcoreapp3.0\RtspClientSharpCore.dll
+E:\work\RtspClientSharpCore\RtspClientSharpCore\RtspClientSharpCore\bin\Release\netcoreapp3.0\RtspClientSharpCore.pdb
+E:\work\RtspClientSharpCore\RtspClientSharpCore\RtspClientSharpCore\obj\Release\netcoreapp3.0\RtspClientSharpCore.AssemblyInfoInputs.cache
+E:\work\RtspClientSharpCore\RtspClientSharpCore\RtspClientSharpCore\obj\Release\netcoreapp3.0\RtspClientSharpCore.AssemblyInfo.cs
+E:\work\RtspClientSharpCore\RtspClientSharpCore\RtspClientSharpCore\obj\Release\netcoreapp3.0\RtspClientSharpCore.csproj.CoreCompileInputs.cache
+E:\work\RtspClientSharpCore\RtspClientSharpCore\RtspClientSharpCore\obj\Release\netcoreapp3.0\RtspClientSharpCore.dll
+E:\work\RtspClientSharpCore\RtspClientSharpCore\RtspClientSharpCore\obj\Release\netcoreapp3.0\RtspClientSharpCore.pdb

@@ -36,6 +36,7 @@ namespace TestRtspClient
         private static string DBPath;
         static void Main(string[] args)
         {
+
             isWindows = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
             isLinux = RuntimeInformation.IsOSPlatform(OSPlatform.Linux);
 
@@ -55,19 +56,30 @@ namespace TestRtspClient
             CreateDB();
 
             //부하주는 Task들
-            Console.WriteLine("Load CPU...");
-            ImplicitLoadCPU();
+            //Console.WriteLine("Load CPU...");
+            //ImplicitLoadCPU();
 
             //monitor용 network server 동작
             Console.WriteLine("Start server for monitoring...");
             AysncQueryServer();
 
             Console.WriteLine("Start server for rtsp streaming...");
+
             string uri = "rtsp://wowzaec2demo.streamlock.net/vod/mp4:BigBuckBunny_115k.mov";
-            //string uri = "rtsp://127.0.0.1:8554/test";
+            //string uri = "rtsp://172.20.44.217:8554/stream";
+            //string uri = "rtsp://10.0.172.58:8554/stream";
             //string uri = "rtsp://123.30.182.75:554/vod/mp4:bird.mp4";
             //var serverUri = new Uri("rtsp://localhost:8554/test/BillGates_2020-480p-ko.mp4");
             //var serverUri = new Uri(uri);
+
+            /*string uriEnv = Environment.GetEnvironmentVariable("ConnetRTSPURI");
+
+            if (uriEnv != null)
+            {
+                uri = uriEnv;
+            }
+            */
+
             var serverUri = new Uri(uri);
             Console.WriteLine(uri);
             //var credentials = new NetworkCredential("admin", "admin12345678");
@@ -78,18 +90,45 @@ namespace TestRtspClient
 
             Task connectTask = ConnectAsync(connectionParameters, cancellationTokenSource.Token);
 
-            Console.WriteLine("Press any key to cancel");
-            Console.ReadLine();
+            while (true)
+            {
+                Console.WriteLine("type END to cancel");
+                string endstring = Console.ReadLine();
+
+                if (endstring == "END")
+                {
+                    break;
+                }
+                else
+                {
+                    Console.WriteLine("input: " + endstring);
+                }
+            }
 
             cancellationTokenSource.Cancel();
 
             Console.WriteLine("Canceling");
             connectTask.Wait(CancellationToken.None);
+            
+            
         }
 
         static void ImplicitLoadCPU()
         {
-            int loadWeight = 0;
+            int loadWeight;
+
+            int loadCPUCountFromEnv = Convert.ToInt32(Environment.GetEnvironmentVariable("LoadCPUCount"));
+            Console.WriteLine("loadCPUCountFromEnv: " + loadCPUCountFromEnv);
+
+            if (loadCPUCountFromEnv != 0)
+            {
+                loadWeight = loadCPUCountFromEnv;
+            }
+            else
+            {
+                loadWeight = 0;
+            }
+
             /*
              while( true )
             {
@@ -112,24 +151,33 @@ namespace TestRtspClient
                 {
                     Thread.Sleep(1000 * 5); //5 second
                     float temp = 7;
-                    ulong count = 0;
+                    ulong count1 = 0;
+                    ulong count2 = 0;
                     while (true)
                     {
                         temp = (temp * (temp + (float)1.414)) / temp;
-                        count++;
 
-                        if (count == 100000000 * 10)
-                        {
-                            Thread.Sleep(1000 * 10); //10 second
-                            count = 0;
+                        /*
+                        count1++;
+                        if (count1 == 100000000 )
+                        {   
+                            count2++;
+                            count1 = 0;
                         }
+
+                        if( count2 == 200 ) // about 30 second in my pc
+                        {
+                            Thread.Sleep(1000 * 120); //30 second
+                            count2 = 0;
+                        }
+                        */
                     }
                 });
             }
         }
         async static Task AysncQueryServer()
         {
-            TcpListener listener = new TcpListener(IPAddress.Any, 7000);
+            TcpListener listener = new TcpListener(IPAddress.Any, 8000);
             listener.Start();
             while (true)
             {
@@ -196,19 +244,35 @@ namespace TestRtspClient
 
                     using (SQLiteCommand cmd = new SQLiteCommand(queryString, conn))
                     {
-                        using (SQLiteDataReader reader = cmd.ExecuteReader())
-                        { 
 
-                            DateTime currentTime = DateTime.Now;
+                        if (queryString.Contains("select") == true )
+                        {
+                            using (SQLiteDataReader reader = cmd.ExecuteReader())
+                            { 
 
-                            if (reader.Read())
-                            {
-                                queryResult = currentTime + " :: i frames=" + reader["sum(i)"] + ", p frames=" + reader["sum(p)"];
+                                DateTime currentTime = DateTime.Now;
+
+                                if (reader.Read())
+                                {
+                                    queryResult = currentTime + " :: i frames=" + reader["sum(i)"] + ", p frames=" + reader["sum(p)"];
+                                }
+                                else
+                                {
+                                    queryResult = "Failed to read DB. Qeury String is :" + queryString;
+                                }
                             }
-                            else
+                        }
+                        else if ( queryString.Contains("delete") == true )
+                        {
+                            using (SQLiteCommand command = new SQLiteCommand(queryString, conn))
                             {
-                                queryResult = "Failed to read DB. Qeury String is :" + queryString;
+                                int result = command.ExecuteNonQuery();
+                                queryResult = "delete" + queryString + " rows";
                             }
+                        }
+                        else
+                        {
+                            queryResult = "Failed to read DB. Qeury String is :" + queryString;
                         }
                     }
 
